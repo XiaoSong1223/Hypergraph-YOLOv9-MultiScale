@@ -115,6 +115,12 @@ The following curve is extracted from the project report. It compares YOLOv8, YO
 
 ![Training trend](docs/readme/training_trend.png)
 
+## Qualitative Comparison
+
+The following comparison image shows the same tomato samples evaluated by different detectors. It highlights the visual differences among YOLOv8, YOLOv12, Hyper-YOLO, and the improved Hypergraph-YOLOv9-MultiScale model.
+
+![Qualitative model comparison](docs/readme/qualitative_comparison.png)
+
 ## Prediction Examples
 
 The following prediction grid is also extracted from the report and shows tomato detection examples with ripeness labels.
