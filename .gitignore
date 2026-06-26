@@ -1,0 +1,22 @@
+# macOS
+.DS_Store
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Training and experiment outputs
+runs/
+wandb/
+
+# Model weights and exported artifacts
+*.pt
+*.pth
+*.onnx
+*.engine
+*.torchscript
+*.mlmodel
+
+# Notebook checkpoints
+.ipynb_checkpoints/
