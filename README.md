@@ -1,151 +1,225 @@
 # Hypergraph-YOLOv9-MultiScale
 
-This repository is a Hyper-YOLOv1.1 / YOLOv9 variant with an additional multi-scale convolution detection head. The baseline configuration keeps the original `DualDDetect` head, while `models/detect/yolov9-s-hyper-multi-scale.yaml` uses `DualDDetectMultiScale`.
+This repository contains an improved Hyper-YOLOv1.1 / YOLOv9 detector for tomato detection. The main change is a new multi-scale convolution detection head, `DualDDetectMultiScale`, which adds parallel 3x3, 5x5, and 7x7 convolution branches to the original Hyper-YOLO detection head.
 
-This repository contains the source code for the paper "Hyper-YOLO: When Visual Object Detection Meets Hypergraph Computation" published in IEEE Transactions on Pattern Analysis and Machine Intelligence (TPAMI) 2025 by [Yifan Feng](https://fengyifan.site/), Jiangang Huang, Shaoyi Du, Shihui Ying, Jun-Hai Yong, Yipeng Li, Guiguang Ding, Rongrong Ji, and Yue Gao*. This paper is available at [here](https://www.arxiv.org/abs/2408.04804).
+The project focuses on experiments with the [Laboro Tomato dataset on Kaggle](https://www.kaggle.com/datasets/nexuswho/laboro-tomato). The report used for this README is `AIT2209089_report.docx`, which compares YOLOv8, YOLOv12, Detectron2, Hyper-YOLO, and the proposed Hypergraph-YOLOv9-MultiScale variant.
 
+## Highlights
 
-In this repository, we provide the implementation of Hyper-YOLO v1.1, which integrates the advantages of [YOLOv9](https://github.com/WongKinYiu/yolov9) and [Hyper-YOLO](https://github.com/iMoonLab/Hyper-YOLO), achieving the state-of-the-art performance on MS COCO dataset. 
+- Adds `MultiScaleConv` to enrich local receptive fields in the Hyper-YOLO detection head.
+- Keeps the original Hyper-YOLO baseline available as `models/detect/yolov9-s-hyper.yaml`.
+- Adds a separate multi-scale configuration: `models/detect/yolov9-s-hyper-multi-scale.yaml`.
+- Evaluates the model on a 6-class tomato ripeness detection task.
+- Provides training curves and prediction examples from the project report.
 
+## Model Change
 
-<div align="center">
-    <a href="./">
-        <img src="docs/performance_v11.jpg" width="40%">
-    </a>
-</div>
+The baseline model uses the original dual DFL detection head:
 
-## NEWS 🔥
-- 2024/12/14: Our paper has been accepted by TPAMI.
+```yaml
+models/detect/yolov9-s-hyper.yaml
+```
 
+The improved model uses the new multi-scale head:
 
-## Performance on MS COCO
+```yaml
+models/detect/yolov9-s-hyper-multi-scale.yaml
+```
 
-We replace the neck of [YOLOv9](https://github.com/WongKinYiu/yolov9) with the proposed HyperC2Net of [Hyper-YOLO](https://github.com/iMoonLab/Hyper-YOLO), termed Hyper-YOLOv1.1. Clearly, in each scale, the Hyper-YOLOv1.1 outperforms the YOLOv9, which demonstrates the effectiveness of our HyperC2Net in capturing high-order feature correlations. The comparison of four scale models are provided in the following table
+In code, the new path is:
 
-| Model            | Test Size | $AP^{val}$ | $AP^{val}_{50}$ | Params | FLOPs |
-| ---              | ---       | ---  | ---  | ---    | ---     | 
-| YOLOv9-T         | 640       | 38.3 | 53.1 | 2.0M   | 7.7G    |
-| YOLOv9-S         | 640       | 46.8 | 63.4 | 7.1M   | 26.4G   |
-| YOLOv9-M         | 640       | 51.4 | 68.1 | 20.0M  | 76.3G   |
-| YOLOv9-C         | 640       | 53.0 | 70.2 | 25.3M  | 102.1G  |
-| Hyper-YOLOv1.1-T | 640       | 40.3 | 55.6 | 2.5M   | 10.8G   |
-| Hyper-YOLOv1.1-S | 640       | 48.0 | 64.5 | 7.6M   | 29.9G   |
-| Hyper-YOLOv1.1-M | 640       | 51.9 | 69.1 | 21.2M  | 87.4G   |
-| Hyper-YOLOv1.1-C | 640       | 53.2 | 70.4 | 29.8M  | 115.5G  |
+```text
+models/yolo.py
+  MultiScaleConv
+  DualDDetectMultiScale
+```
 
+`MultiScaleConv` applies three convolution branches with kernel sizes 3, 5, and 7, sums their outputs, and applies `SiLU`. `DualDDetectMultiScale` then uses this block in the regression and classification branches of the dual detection head.
 
+## Dataset
+
+The dataset used in the report is [Laboro Tomato](https://www.kaggle.com/datasets/nexuswho/laboro-tomato) from Kaggle.
+
+Local dataset layout used in this project:
+
+```text
+archive/
+  tomato.yaml
+  train/
+    images/
+    labels/
+  val/
+    images/
+    labels/
+  annotations/
+```
+
+Dataset split found in the local `archive/` folder:
+
+| Split | Images | Labels |
+| --- | ---: | ---: |
+| Train | 643 | 643 |
+| Validation | 161 | 161 |
+
+Classes in `archive/tomato.yaml`:
+
+| ID | Class |
+| ---: | --- |
+| 0 | `b_fully_ripened` |
+| 1 | `b_half_ripened` |
+| 2 | `b_green` |
+| 3 | `l_fully_ripened` |
+| 4 | `l_half_ripened` |
+| 5 | `l_green` |
+
+Example dataset config:
+
+```yaml
+path: /path/to/archive
+train: train/images
+val: val/images
+nc: 6
+names:
+  - b_fully_ripened
+  - b_half_ripened
+  - b_green
+  - l_fully_ripened
+  - l_half_ripened
+  - l_green
+```
+
+## Results From Report
+
+The table below summarizes the evaluation reported in `AIT2209089_report.docx`.
+
+| Model | Input Size | mAP@50 | mAP@50:95 | Params | FLOPs | FPS |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| YOLOv8 | 640 | 77.6% | 60.1% | 3.0M | 8.2G | 256 |
+| YOLOv12 | 640 | 76.0% | 57.9% | 2.57M | 6.5G | 88 |
+| Detectron2-0.6 | 640 | 69.6% | 55.4% | 107.03M | 157.33G | 16.34 |
+| Hyper-YOLOv9s | 640 | 85.4% | 69.2% | 1.4M | - | 35 |
+| Hyper-MultiScale-YOLO | 640 | 84.5% | 68.1% | 3.9M | - | 32 |
+
+The final report shows that the original Hyper-YOLO baseline has the best final mAP on this dataset, while the multi-scale version remains highly competitive and improves early training behavior. This makes the added module useful as an ablation target: it tests whether explicit multi-scale receptive fields can complement Hyper-YOLO's hypergraph feature fusion.
+
+Early-epoch ablation from the report:
+
+| Model | 5 Epoch mAP@50 | 5 Epoch mAP@50:95 | 10 Epoch mAP@50 | 10 Epoch mAP@50:95 | 15 Epoch mAP@50 | 15 Epoch mAP@50:95 |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| Hyper-YOLO | 0.0164 | 0.00604 | 0.226 | 0.135 | 0.351 | 0.230 |
+| Hyper-MultiScale-YOLO | 0.0515 | 0.0213 | 0.278 | 0.179 | 0.417 | 0.277 |
+
+## Training Trend
+
+The following curve is extracted from the project report. It compares YOLOv8, YOLOv12, Hyper-YOLO, and Hyper-MultiScale-YOLO during training.
+
+![Training trend](docs/readme/training_trend.png)
+
+## Prediction Examples
+
+The following prediction grid is also extracted from the report and shows tomato detection examples with ripeness labels.
+
+![Prediction examples](docs/readme/prediction_examples.jpg)
 
 ## Installation
 
-Clone repo and create conda environment (recommended).
-Then install requirements.txt in a Python>=3.8.0 environment, including PyTorch>=1.8.
+Create a Python environment and install the project dependencies:
 
 ```bash
-git clone https://github.com/iMoonLab/Hyper-YOLOv1.1.git  # clone
-cd Hyper-YOLOv1.1
-conda create -n Hyper-YOLOv1.1 python=3.8
-conda activate Hyper-YOLOv1.1
-pip install -r requirements.txt  # install
+conda create -n hyper-yolo-ms python=3.8
+conda activate hyper-yolo-ms
+pip install -r requirements.txt
 ```
-You can also use the environment.yaml file and the conda command to install the required environment.
+
+Alternatively:
+
 ```bash
 conda env create -f environment.yaml
 ```
 
-## Datasets
-Data Preparation: Download the MS COCO dataset images (training, validation, and test sets) and corresponding labels, or prepare your custom dataset as shown below. Additionally, modify the dataset path in data/coco.yaml to reflect the location of your data.
-```bash
-coco
---images
-  --train2017
-  --val2017
---labels
-  --train2017
-  --val2017
-```
-
 ## Training
-Training configurations can be modified within the argument parser of “train.py” or “train_dual.py”. 
-The key factors are model, data, img, epoches, batch, device and training hyperparameters.
-You can adjust the training hyperparameters in the `data/hyps/hyp.scratch-XXX.yaml` file. Here, `XXX` can be set to `low`, `med`, or `high`, which correspond to low, medium, and high levels of data augmentation, respectively.
-```bash
-python train.py  --hyp hyp.scratch-low.yaml
-                       hyp.scratch-med.yaml
-                       hyp.scratch-high.yaml
-```
-For instance, you can employ “yolov9-s-hyper.yaml” to train the “HyperYOLOv1.1-S” object detection model, and subsequently use “convert.py” along with “gelan-s-hyper.yaml” to remove the Auxiliary Reversible Branch.
-#### Single GPU training
-```bash
-# train yolov9-s-hyper models
-python train_dual.py --workers 8 --device 0 --batch 16 --data data/coco.yaml --img 640 --cfg models/detect/yolov9-s-hyper.yaml --weights '' --name yolov9-s-hyper --hyp hyp.scratch-low.yaml --epochs 500 
 
-# train gelan-s-hyper models
-# python train.py --workers 8 --device 0 --batch 32 --data data/coco.yaml --img 640 --cfg models/detect/gelan-s-hyper.yaml --weights '' --name gelan-s-hyper --hyp hyp.scratch-low.yaml --epochs 500
-```
-#### Multiple GPU training
-```bash
-# train yolov9-s-hyper models
-python -m torch.distributed.run --nproc_per_node 8 --master_port 9527 train_dual.py --workers 8 --device 0,1,2,3,4,5,6,7 --sync-bn --batch 128 --data data/coco.yaml --img 640 --cfg models/detect/yolov9-s-hyper.yaml --weights '' --name yolov9-s-hyper --hyp hyp.scratch-low.yaml --epochs 500 
+Train the original Hyper-YOLO baseline:
 
-# train gelan-s-hyper models
-# python -m torch.distributed.run --nproc_per_node 4 --master_port 9527 train.py --workers 8 --device 0,1,2,3 --sync-bn --batch 128 --data data/coco.yaml --img 640 --cfg models/detect/gelan-s-hyper.yaml --weights '' --name gelan-s-hyper --hyp hyp.scratch-low.yaml --epochs 500
+```bash
+python train_dual.py \
+  --workers 8 \
+  --device 0 \
+  --batch 16 \
+  --data /path/to/archive/tomato.yaml \
+  --img 640 \
+  --cfg models/detect/yolov9-s-hyper.yaml \
+  --weights '' \
+  --name hyper_yolo_tomato \
+  --hyp data/hyps/hyp.scratch-low.yaml \
+  --epochs 100
 ```
+
+Train the improved multi-scale model:
+
+```bash
+python train_dual.py \
+  --workers 8 \
+  --device 0 \
+  --batch 16 \
+  --data /path/to/archive/tomato.yaml \
+  --img 640 \
+  --cfg models/detect/yolov9-s-hyper-multi-scale.yaml \
+  --weights '' \
+  --name hyper_multiscale_yolo_tomato \
+  --hyp data/hyps/hyp.scratch-low.yaml \
+  --epochs 100
+```
+
+The report used image size 640, 100 epochs, SGD-style training settings, and Google Colab L4 GPU resources.
 
 ## Evaluation
-The key factors are model(weight), data, img, batch, conf, iou, half.
+
+Evaluate a trained multi-scale checkpoint:
+
 ```bash
-# evaluate converted yolov9-s-hyper models
-python val.py --data data/coco.yaml --img 640 --batch 32 --conf 0.001 --iou 0.7 --device 0 --weights './yolov9-s-hyper-converted.pt' --save-json --name yolov9_s_hyper_c_640_val
-
-# evaluate yolov9-s-hyper models
-# python val_dual.py --data data/coco.yaml --img 640 --batch 32 --conf 0.001 --iou 0.7 --device 0 --weights './yolov9-s-hyper.pt' --save-json --name yolov9_s_hyper_640_val
-
-# evaluate gelan-s-hyper models
-# python val.py --data data/coco.yaml --img 640 --batch 32 --conf 0.001 --iou 0.7 --device 0 --weights './gelan-s-hyper.pt' --save-json --name gelan_s_hyper_640_val
-```
-### Detection
-The key factors are model(weight), source, img, conf, iou.
-```bash
-# inference converted yolov9-s-hyper models
-python detect.py --source './data/images/horses.jpg' --img 640 --device 0 --weights './yolov9-s-hyper-converted.pt' --name yolov9_s_hyper_c_640_detect
-
-# inference yolov9 model
-# python detect_dual.py --source './data/images/horses.jpg' --img 640 --device 0 --weights './yolov9-s-hyper.pt' --name yolov9_s_hyper_640_detect
-
-# inference gelan models
-# python detect.py --source './data/images/horses.jpg' --img 640 --device 0 --weights './gelan-s-hyper.pt' --name gelan_s_hyper_640_detect
+python val_dual.py \
+  --data /path/to/archive/tomato.yaml \
+  --img 640 \
+  --batch 16 \
+  --conf 0.001 \
+  --iou 0.7 \
+  --device 0 \
+  --weights runs/train/hyper_multiscale_yolo_tomato/weights/best.pt \
+  --name hyper_multiscale_yolo_tomato_val
 ```
 
-![Detection](docs/vis_det.jpg)
+Run detection:
 
-### Segmentation
+```bash
+python detect_dual.py \
+  --source /path/to/archive/val/images \
+  --img 640 \
+  --device 0 \
+  --weights runs/train/hyper_multiscale_yolo_tomato/weights/best.pt \
+  --name hyper_multiscale_yolo_tomato_detect
+```
 
-![Detection](docs/vis_seg.jpg)
+## Original Paper Reference
 
-## Export
-Please refer to YOLOv8 or YOLOv9.
+This work is based on Hyper-YOLOv1.1 and YOLOv9. The original Hyper-YOLO paper should be used as the theoretical background for hypergraph computation, HyperC2Net, and the original detection architecture:
 
+- Paper: [Hyper-YOLO: When Visual Object Detection Meets Hypergraph Computation](https://www.arxiv.org/abs/2408.04804)
+- Original project: [iMoonLab/Hyper-YOLO](https://github.com/iMoonLab/Hyper-YOLO)
+- YOLOv9 project: [WongKinYiu/yolov9](https://github.com/WongKinYiu/yolov9)
 
-# Citation
-If you find our work useful in your research, please consider citing:
+If you cite the original Hyper-YOLO method, use:
 
 ```bibtex
 @article{feng2024hyper,
   title={Hyper-YOLO: When Visual Object Detection Meets Hypergraph Computation},
-  author={Feng, Yifan and Huang, Jiangang and Du, Shaoyi and Ying, Shihui and Yong, Jun-Hai and Li, Yipeng and Ding, Guiguang and Ji, Rongrong and Gao, Yue},
+  author={Feng, Yifan and Huang, Jiangang and Du, Shaoyi and Ying, Shihui and Yong, J. H. and Li, Yipeng and Ding, Guiguang and Ji, Rongrong and Gao, Yue},
   journal={IEEE Transactions on Pattern Analysis and Machine Intelligence},
   year={2025},
   publisher={IEEE}
 }
 ```
 
-# About Hypergraph Computation
-Hypergraph computation is a powerful tool to capture high-order correlations among visual features. Compared with graphs, each hyperedge in a hypergraph can connect more than two vertices, which is more flexible to model complex correlations. Now, learning with high-order correlations still remains a under-explored area in computer vision. We hope our work can inspire more research in this direction. If you are interested in hypergraph computation, please refer to our series of works on hypergraph computation in the follows:
+## Notes
 
-- [Hypergraph Learning: Methods and Practices](https://ieeexplore.ieee.org/abstract/document/9264674)
-- [Hypergraph Nerual Networks](https://arxiv.org/abs/1809.09401)
-- [HGNN+: General Hypergraph Nerual Networks](https://ieeexplore.ieee.org/document/9795251/)
-- [Hypergraph Isomorphism Computation](https://arxiv.org/pdf/2307.14394)
-
-# Contact
-Hyper-YOLO is maintained by [iMoon-Lab](http://moon-lab.tech/), Tsinghua University. If you have any questions, please feel free to contact us via email: [Yifan Feng](mailto:evanfeng97@gmail.com) and [Jiangang Huang](mailto:mywhy666@stu.xjtu.edu.cn).
+The repository does not include the Kaggle dataset or trained weights. Download the dataset from Kaggle, place it as `archive/`, and update the dataset YAML path before training.
